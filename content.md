@@ -23,8 +23,7 @@ You can choose a suggested workflow for Ruby on Rails or skip the suggested work
 Insert the following YAML configuration into the `rails_ci.yml` file:
 
 ```yaml
-# This workflow will install a prebuilt Ruby version, install dependencies, and
-# run tests and linters.
+# This workflow will install a prebuilt Ruby version, install dependencies, and run tests
 name: "Ruby on Rails CI"
 on:
   push:
@@ -58,25 +57,6 @@ jobs:
       # This runs the tests in the spec/ folder
       - name: Run rspec tests
         run: bundle exec rspec
-
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-      - name: Install Ruby and gems
-        uses: ruby/setup-ruby@55283cc23133118229fd3f97f9336ee23a179fcf # v1.146.0
-        with:
-          bundler-cache: true
-      # Can add more (eg bundler-audit, brakeman, etc.)
-      - name: Lint Ruby files
-        run: bundle exec rubocop --parallel
-      - name: Lint Javascript files
-        uses: actions/setup-node@v3
-        with:
-          node-version: ${{ matrix.node }}
-      - run: npm ci
-      - run: npm run lint
 ```
 
 ## Explanation of Key Sections
