@@ -1,21 +1,51 @@
 # Continuous Integration / Continuous Deployment (CI/CD) With GitHub Actions
 
 ## Introduction
-Continuous Integration (CI) and Continuous Deployment (CD) are crucial practices in modern software development, particularly for agile teams. In this lesson, we will guide you through setting up a simple CI/CD pipeline using GitHub Actions for a Ruby on Rails application. This pipeline will primarily focus on running the test suite whenever changes are pushed to the repository.
+
+When you’re building software with a team, it’s important to make sure that new code doesn’t accidentally break existing features. That’s where **CI/CD** comes in.
+
+- **Continuous Integration (CI)** means: every time you push code, an automated system checks it (for example, by running your tests).
+
+- **Continuous Deployment (CD)** means: once the code has passed those checks, it can automatically be delivered to users.
+
+You can think of CI/CD as having a robot teammate who runs your commands for you in the cloud, every time code changes. Instead of waiting to find out something is broken later, the robot lets you know right away with a ✅ or ❌.
+
+### What is a pipeline?
+
+The series of steps this robot runs is called a pipeline. For example this "robot" could be told to:
+
+1. Check out your code
+
+2. Install Ruby and your gems
+
+3. Run your tests
+
+It does all this so you and your team don't have to!
+
+In this lesson, you’ll create your first pipeline using GitHub Actions. The pipeline will run your Rails test suite whenever changes are pushed to the repository, giving you quick feedback about whether your code is working as expected.
 
 ## Setting Up Your GitHub Repository
-Before we begin, ensure your Rails application is hosted on GitHub. If not, you can create a new repository and push your Rails application code to it.
+
+GitHub Actions can run on any kind of project — Ruby, Python, JavaScript, or otherwise. The only requirement is that your code lives in a repository on GitHub.
+
+For this lesson, we’ll focus on a Rails application because the example workflow is designed to run a Rails test suite. That doesn’t mean GitHub Actions is limited to Rails though, it’s just the context we’ll use here.
+
+It’s important to note: this lesson is not about creating a brand-new empty repository. The workflow we’ll build expects real code and tests to run. If you already have a Rails project pushed to GitHub that has rspec tests, you’re ready. If not, complete at least one Rails assignment and push it to GitHub before continuing. Otherwise, the example workflow will likely fail.
 
 ## Creating the GitHub Actions Workflow
-GitHub Actions allows you to automate, customize, and execute your software development workflows right in your repository. Here, we'll create a workflow to run the Rails test suite.
+
+Now that you've selected an existing Rails project on GitHub, you can add a workflow to it. A workflow in GitHub Actions is just a set of automated steps (a “pipeline”) that run whenever certain events happen — in our case, whenever code is pushed or a pull request is opened.
+
+In this lesson, we’ll create a workflow that runs your Rails test suite automatically, so you get instant feedback on whether your code is working as expected.
 
 1. Create the Workflow File
 In your repository, navigate to the `Actions` tab. Click `New workflow`.
 
 ![](assets/actions.png)
 
+GitHub will suggest some starter workflows (including one for Ruby on Rails). For this lesson, don’t worry about those suggestions. Instead, choose “set up a workflow yourself” (blue hyperlink in the screenshot above). This opens an editor where you can paste in your own configuration.
 
-You can choose a suggested workflow for Ruby on Rails or skip the suggested workflows and click set up a workflow yourself. You'll be presented with an editor to write your workflow file. Name the file something like `rails_ci.yml`.
+Name the file something like `rails_ci.yml`.
 
 ![](assets/new-workflow.png)
 
@@ -59,13 +89,6 @@ jobs:
         run: bundle exec rspec
 ```
 
-## Explanation of Key Sections
-- **on**: Specifies the events that trigger the workflow. Here, it triggers on pushes and pull requests to the main branch.
-- **jobs**: Defines the jobs that will be run. Here, we have one job called build.
-- **runs-on**: Indicates the type of machine to run the job on. We use the latest Ubuntu.
-- **services**: Sets up a PostgreSQL database, which is required for the Rails test environment.
-- **steps**: Lists the steps of the job. This includes checking out the code, setting up Ruby, installing dependencies, setting up the database, and running the tests.
-
 3. Commit and Push the `rails_ci.yml` Workflow File
 
 4. Verify the Workflow
@@ -74,7 +97,126 @@ You should see the workflow running. If everything is set up correctly, the work
 
 ![](assets/pull-request.png)
 
+## Demystifying the YAML
+
+If your workflow failed, the first place to start is by understanding exactly what we're asking the "robot" to check for. We have to understand the instructions in order to understand where it might be going wrong.
+
+Let’s break down the workflow file piece by piece. Remember: a workflow is just a recipe of steps the GitHub Actions robot follows whenever it’s triggered.
+
+**Chunk 1:**
+
+```yaml
+# This workflow will install a prebuilt Ruby version, install dependencies, and run tests
+
+name: "Ruby on Rails CI"
+```
+
+- `name:` is simply a label for the workflow. It shows up in the Actions tab. You could call it “Rails Checks” or “Bob's Handy CI Pipeline” and it would work the same.
+
+**Chunk 2:**
+
+```yaml
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+```
+
+- `on:` tells GitHub *when* to run this workflow.
+
+- In this case: whenever code is pushed to main, or when a pull request targets main.
+
+**Chunk 3:**
+
+```yaml
+jobs:
+  test:
+    runs-on: ubuntu-latest
+```
+
+- `jobs:` defines the main tasks.
+- Here we have one job, called `test` (you could name it anything).
+- `runs-on:` specifies the type of machine GitHub should provide. `ubuntu-latest` means “give me a fresh Ubuntu Linux **virtual machine** (essentially a temporary computer that runs in GitHub’s cloud).”
+
+**Chunk 4:**
+
+```yaml
+    services:
+      postgres:
+        image: postgres:11-alpine
+        ports:
+          - "5432:5432"
+        env:
+          POSTGRES_DB: rails_test
+          POSTGRES_USER: rails
+          POSTGRES_PASSWORD: password
+```
+
+- `services:` adds extra **containers** your job can use. (A container is like a small prebuilt sidekick computer-in-a-box that runs alongside your main virtual machine)
+- Here we’re spinning up a PostgreSQL database in a container, which Rails will connect to during tests.
+- The `env` variables define the database name, user, and password.
+
+**Chunk 5:**
+
+```yaml
+    env:
+      RAILS_ENV: test
+      DATABASE_URL: "postgres://rails:password@localhost:5432/rails_test"
+```
+
+- `env:` sets environment variables for the whole job.
+- These tell Rails it’s running in the test environment, and how to connect to the database.
+
+**Chunk 6:**
+
+```yaml
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+```
+
+- `steps:` lists the individual instructions inside the job.
+- Anytime you see `uses:`, you’re telling GitHub Actions to pull in and run a prebuilt action.
+- Those actions can be official ones GitHub provides (like `actions/checkout`), or community-built ones published on the GitHub Marketplace.
+- `actions/checkout@v3` is a prebuilt GitHub Action (made by GitHub) that downloads your repository code into the VM. Without it, the VM would start out empty.
+- You can think of them as plugins that save you from writing everything yourself.
+
+**Chunk 7:**
+
+```yaml
+      - name: Install Ruby and gems
+        uses: ruby/setup-ruby@v1
+        with:
+          bundler-cache: true
+```
+
+- This uses another prebuilt Action,`ruby/setup-ruby@v1`, to install Ruby and your gems.
+- By default it reads your `.ruby-version` file to know which Ruby version to install, so make sure this file exists in your repo!
+- `bundler-cache: true` speeds things up by caching installed gems between runs.
+
+**Chunk 8:**
+
+```yaml
+      - name: Set up database schema
+        run: bin/rails db:schema:load
+```
+
+- `run:` means “type this command into the virtual machine’s terminal.” (Just like if you maually ran this command in your VS code terminal in your project repo.)
+- This Rails terminal command prepares the test database by loading the schema.
+
+**Final Chunk!**
+
+```yaml
+      - name: Run rspec tests
+        run: bundle exec rspec
+```
+
+- Finally, this runs your RSpec tests! Does the command look familar?
+- If they pass, you’ll see a ✅. If they fail, you’ll see a ❌.
+
 ## Additional Considerations
+
 - **Caching Dependencies**: To speed up the workflow, you can cache your dependencies using the actions/cache step. This reduces the time spent in the installation step on subsequent runs.
 - **Notifications**: You can set up notifications (e.g., email, Slack) to alert you when the CI process fails. This helps keep the team informed about the health of the application.
 - **Deployment**: Once your CI setup is stable, consider adding deployment steps to automate the deployment of your application to your hosting service.
@@ -140,6 +282,7 @@ You should see the workflow running. If everything is set up correctly, the work
 {: .choose_all #github_actions_benefits title="Benefits of GitHub Actions" points="3" answer="[1, 2, 4]" }
 
 ## Playlist
+
 [Playlist](https://github.com/DPI-WE/pr-playlist) is an index of favorite songs. Follow the contribution guidelines to add your song and practice your pull request skills with github actions.
 
 - Did you add your song in a pull request?
@@ -157,6 +300,7 @@ An instructor will provide additional feedback on your submission there.
 </div>
 
 ## Add a GitHub Action CI/CD Flow to an assignment
+
 Submit the repository URL where you've added a GitHub Action CI/CD Flow and practice your DevOps skills. Add a `test` step (not a lint step). Add it to an assignment with a test suite. (eg your assignments with a rake grade step)
 
 - Did you add a GitHub Action CI/CD Flow to an assignment?
@@ -174,6 +318,7 @@ An instructor will provide additional feedback on your submission there.
 </div>
 
 ## Conclusion
+
 Setting up CI/CD with GitHub Actions empowers your team to catch issues early and deploy confidently. This lesson provided a basic setup, but GitHub Actions is very flexible, allowing you to tailor your workflows to match your development and operational needs perfectly. Always explore further optimizations and tools to integrate into your pipeline for more robust automation.
 
 ---
